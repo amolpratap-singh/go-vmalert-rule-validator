@@ -1,42 +1,36 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
+	"errors"
+	"log"
+	"os"
+	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/amolpratap-singh/vmalert-rule-validator/minioClient"
 )
 
-type FilenameInput struct {
-	Filename string `json:"filename" binding:"required"`
-}
+var (
+	genLogger = log.New(os.Stdout, "INFO: ", log.LstdFlags)
+
+	// Custom errors
+	ErrUploadFile   = errors.New("file upload error")
+	ErrDownloadFile = errors.New("file download error")
+	ErrListFile     = errors.New("list file error")
+)
 
 func main() {
-	fmt.Println("Go VM alert rule Validator")
+	genLogger.Println("Go VM alert rule Validator")
+	genLogger.Println("vmalert-init-container")
 
+	minioClient, err := minioClient.NewMinioClient()
 
-	router := gin.Default()
+	if err != nil {
+		log.Fatalf("Failed to create Minio client: %v", err)
+	}
 
-	// Handle POST request to /upload
-	router.POST("/upload", func(c *gin.Context) {
-		var input FilenameInput
-		// Bind the JSON payload to the FilenameInput struct
-		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// You can now use the `input.Filename` to process the file or any other logic
-		fmt.Printf("Received filename: %s\n", input.Filename)
-
-		// Simulate processing and return a success response
-		c.JSON(http.StatusOK, gin.H{
-			"message":  "File processed successfully",
-			"filename": input.Filename,
-		})
-	})
-
-	// Start the server on port 8080
-	router.Run(":8080")
-
+	files, err := minioClient.ListFiles()
+	if err != nil {
+		log.Fatalf("Failed to list files: %v", err)
+	}
+	log.Println("Files in bucket:", strings.Join(files, ", "))
 }
